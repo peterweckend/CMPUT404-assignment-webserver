@@ -32,7 +32,49 @@ class MyWebServer(socketserver.BaseRequestHandler):
     def handle(self):
         self.data = self.request.recv(1024).strip()
         print ("Got a request of: %s\n" % self.data)
-        self.request.sendall(bytearray("OK",'utf-8'))
+        newData = self.data.decode("utf-8").split('\n')[0].split(' ')
+        print(newData)
+
+        newline = '\n'
+        response_proto = 'HTTP/1.1 '
+        response_status = '200 '
+        response_status_text = 'OK\n'
+        response_content_type = 'Content-Type: text/html\n'
+
+        html_content = ''
+
+        if newData[0] != 'GET':
+            response_status = '405 '
+            response_status_text = 'Method Not Allowed\n'
+        else:
+            if newData[1] == '/' or newData[1][1:] == 'index.html':
+                html_file = open('./www/index.html', 'r')
+
+                for line in html_file:
+                    html_content += line
+            elif newData[1][1:] not in ['deep', 'deep/index.html']:
+                response_status = '404 '
+                response_status_text = 'Not Found\n'
+                html_content = '''404 - The page you're looking for does not exist'''
+            elif newData[1][1:] == 'deep':
+                html_file = open('./www'+newData[1]+'/index.html', 'r')
+
+                for line in html_file:
+                    html_content += line
+
+            elif newData[1][1:] == 'deep/index.html':
+                html_file = open('./www' + newData[1], 'r')
+
+                for line in html_file:
+                    html_content += line
+
+
+        response = response_proto + response_status + response_status_text + response_content_type + newline + html_content + '\n'
+
+        self.request.sendall(bytearray(response, 'utf-8'))
+
+        # remember to close html_file
+
 
 if __name__ == "__main__":
     HOST, PORT = "localhost", 8080
