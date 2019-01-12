@@ -37,43 +37,46 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
         newline = '\n'
         response_proto = 'HTTP/1.1 '
-        response_status = '200 '
-        response_status_text = 'OK\n'
+        response_status = '200 OK\n'
         response_content_type = 'Content-Type: text/html\n'
 
-        html_content = ''
+        returned_content = ''
 
         if newData[0] != 'GET':
-            response_status = '405 '
-            response_status_text = 'Method Not Allowed\n'
+            response_status = '405 Method Not Allowed\n'
+
         else:
             if newData[1] == '/' or newData[1][1:] == 'index.html':
-                html_file = open('./www/index.html', 'r')
+                returned_content = self.fetch_content('./www/index.html')
 
-                for line in html_file:
-                    html_content += line
-            elif newData[1][1:] not in ['deep', 'deep/index.html']:
-                response_status = '404 '
-                response_status_text = 'Not Found\n'
-                html_content = '''404 - The page you're looking for does not exist'''
-            elif newData[1][1:] == 'deep':
-                html_file = open('./www'+newData[1]+'/index.html', 'r')
+            elif newData[1][1:] == 'base.css':
+                response_content_type = 'Content-Type: text/css\n'
+                returned_content = self.fetch_content('./www/base.css')
 
-                for line in html_file:
-                    html_content += line
+            elif newData[1][1:] in ['deep', 'deep/', 'deep/index.html']:
+                returned_content = self.fetch_content('./www/deep/index.html')
 
-            elif newData[1][1:] == 'deep/index.html':
-                html_file = open('./www' + newData[1], 'r')
+            elif newData[1][1:] in ['deep/deep.css']:
+                response_content_type = 'Content-Type: text/css\n'
+                returned_content = self.fetch_content('./www/deep/deep.css')
 
-                for line in html_file:
-                    html_content += line
+            else:
+                response_status = '404 Not Found\n'
+                returned_content = '''404 - The page you're looking for could not be found.'''
 
-
-        response = response_proto + response_status + response_status_text + response_content_type + newline + html_content + '\n'
-
+        response = response_proto + response_status + response_content_type + newline + returned_content + '\n'
         self.request.sendall(bytearray(response, 'utf-8'))
 
-        # remember to close html_file
+    def fetch_content(self, file_path):
+        content_file = open(file_path, 'r')
+        content_string = ''
+
+        for line in content_file:
+            content_string += line
+
+        content_file.close()
+
+        return content_string
 
 
 if __name__ == "__main__":
