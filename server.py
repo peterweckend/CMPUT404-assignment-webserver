@@ -1,5 +1,6 @@
 #  coding: utf-8 
 import socketserver
+from pathlib import Path # for checking if files exist
 
 # Copyright 2013 Abram Hindle, Eddie Antonio Santos
 # 
@@ -31,40 +32,44 @@ class MyWebServer(socketserver.BaseRequestHandler):
     
     def handle(self):
         self.data = self.request.recv(1024).strip()
-        print ("Got a request of: %s\n" % self.data)
-        newData = self.data.decode("utf-8").split('\n')[0].split(' ')
-        print(newData)
+        # print ("Got a request of: %s\n" % self.data)
+        split_req_data = self.data.decode("utf-8").split('\n')[0].split(' ')
+        inside_slashes = split_req_data[1].split('/')
 
-        newline = '\n'
         response_proto = 'HTTP/1.1 '
         response_status = '200 OK\n'
-        response_content_type = 'Content-Type: text/html\n'
+        response_content_type = 'Content-Type: text/html\n'  # use html by default
 
         returned_content = ''
 
-        if newData[0] != 'GET':
+        if split_req_data[0] != 'GET':
             response_status = '405 Method Not Allowed\n'
-
         else:
-            if newData[1] == '/' or newData[1][1:] == 'index.html':
+            # default home page
+            if len(inside_slashes) == 2 and split_req_data[1][1:] == '':
                 returned_content = self.fetch_content('./www/index.html')
 
-            elif newData[1][1:] == 'base.css':
-                response_content_type = 'Content-Type: text/css\n'
-                returned_content = self.fetch_content('./www/base.css')
+            elif Path('./www/'+split_req_data[1][1:]).is_file() \
+                    and (split_req_data[1][-3:] == 'css' or split_req_data[1][-4:] == 'html'):
+                returned_content = self.fetch_content('./www/' + split_req_data[1][1:])
 
-            elif newData[1][1:] in ['deep', 'deep/', 'deep/index.html']:
-                returned_content = self.fetch_content('./www/deep/index.html')
+                # support css mime type
+                if split_req_data[1][-3:] == 'css':
+                    response_content_type = 'Content-Type: text/css\n'
 
-            elif newData[1][1:] in ['deep/deep.css']:
-                response_content_type = 'Content-Type: text/css\n'
-                returned_content = self.fetch_content('./www/deep/deep.css')
+            # paths ending in /
+            elif Path('./www/'+split_req_data[1][1:]).is_dir() and split_req_data[1][1:] != 'etc':
+                returned_content = self.fetch_content('./www/' + split_req_data[1][1:] + "/index.html")
+
+                # support css mime type
+                if split_req_data[1][-3:] == 'css':
+                    response_content_type = 'Content-Type: text/css\n'
 
             else:
                 response_status = '404 Not Found\n'
                 returned_content = '''404 - The page you're looking for could not be found.'''
 
-        response = response_proto + response_status + response_content_type + newline + returned_content + '\n'
+        response = response_proto + response_status + response_content_type + '\n' + returned_content + '\n'
         self.request.sendall(bytearray(response, 'utf-8'))
 
     def fetch_content(self, file_path):
