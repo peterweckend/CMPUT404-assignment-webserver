@@ -37,13 +37,14 @@ class MyWebServer(socketserver.BaseRequestHandler):
         inside_slashes = split_req_data[1].split('/')
 
         response_proto = 'HTTP/1.1 '
-        response_status = '200 OK\n'
-        response_content_type = 'Content-Type: text/html\n'  # use html by default
+        response_status = '200 OK\r\n'
+        response_content_type = 'Content-Type: text/html\r\n'  # use html by default
+        location = ''
 
         returned_content = ''
 
         if split_req_data[0] != 'GET':
-            response_status = '405 Method Not Allowed\n'
+            response_status = '405 Method Not Allowed\r\n'
         else:
             # default home page
             if len(inside_slashes) == 2 and split_req_data[1][1:] == '':
@@ -55,21 +56,27 @@ class MyWebServer(socketserver.BaseRequestHandler):
 
                 # support css mime type
                 if split_req_data[1][-3:] == 'css':
-                    response_content_type = 'Content-Type: text/css\n'
+                    response_content_type = 'Content-Type: text/css\r\n'
 
             # paths ending in /
             elif Path('./www/'+split_req_data[1][1:]).is_dir() and split_req_data[1][1:] != 'etc':
-                returned_content = self.fetch_content('./www/' + split_req_data[1][1:] + "/index.html")
 
-                # support css mime type
-                if split_req_data[1][-3:] == 'css':
-                    response_content_type = 'Content-Type: text/css\n'
+                # if no slash at the end, return a 301 and the address with the slash
+                if split_req_data[1][-1] != '/':
+                    response_status = '301 Moved Permanently\r\n'
+                    location = 'Location: ' + split_req_data[1] + '/' + '\r\n'
+                else:
+                    returned_content = self.fetch_content('./www/' + split_req_data[1][1:] + "/index.html")
+
+                    # support css mime type
+                    if split_req_data[1][-3:] == 'css':
+                        response_content_type = 'Content-Type: text/css\r\n'
 
             else:
-                response_status = '404 Not Found\n'
+                response_status = '404 Not Found\r\n'
                 returned_content = '''404 - The page you're looking for could not be found.'''
 
-        response = response_proto + response_status + response_content_type + '\n' + returned_content + '\n'
+        response = response_proto + response_status + location + response_content_type + '\r\n' + returned_content + '\r\n'
         self.request.sendall(bytearray(response, 'utf-8'))
 
     def fetch_content(self, file_path):
