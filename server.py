@@ -34,7 +34,10 @@ class MyWebServer(socketserver.BaseRequestHandler):
         self.data = self.request.recv(1024).strip()
         # print ("Got a request of: %s\n" % self.data)
         split_req_data = self.data.decode("utf-8").split('\n')[0].split(' ')
-        inside_slashes = split_req_data[1].split('/')
+        try:
+            inside_slashes = split_req_data[1].split('/')
+        except:
+            inside_slashes = -1
 
         response_proto = 'HTTP/1.1 '
         response_status = '200 OK\r\n'
